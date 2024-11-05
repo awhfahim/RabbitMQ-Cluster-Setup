@@ -1,0 +1,73 @@
+services:
+  rabbitmq-node1:
+    image: 'rabbitmq'
+    hostname: 'rabbitmq1'
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "admin"
+    ports:
+      - "15674:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ${PWD}/cluster-entrypoint.sh:/usr/local/bin/cluster-entrypoint.sh
+      - rabbitmq1-data:/var/lib/rabbitmq/
+      - rabbitmq1-logs:/var/log/rabbitmq
+    restart: unless-stopped
+    entrypoint: /usr/local/bin/cluster-entrypoint.sh
+    networks:
+      - rabbitmq-net
+
+  rabbitmq-node2:
+    image: 'rabbitmq'
+    hostname: 'rabbitmq2'
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "admin"
+      JOIN_CLUSTER_HOST: "rabbitmq1"
+    ports:
+      - "15673:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ${PWD}/cluster-entrypoint.sh:/usr/local/bin/cluster-entrypoint.sh
+      - rabbitmq1-data:/var/lib/rabbitmq/
+      - rabbitmq1-logs:/var/log/rabbitmq
+    restart: unless-stopped
+    entrypoint: /usr/local/bin/cluster-entrypoint.sh
+    networks:
+      - rabbitmq-net
+    
+  haproxy:
+    image: 'haproxy:latest'
+    container_name: haproxy
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "5672:5672"
+      - "8404:8404"
+    networks:
+      - rabbitmq-net
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq-node1
+      - rabbitmq-node2
+      
+volumes:
+  rabbitmq1-data:
+  rabbitmq1-logs:
+  rabbitmq2-data:
+  rabbitmq2-logs:
+    
+networks:
+  rabbitmq-net:
+    name: mtsl-iot-network
+    external: true
