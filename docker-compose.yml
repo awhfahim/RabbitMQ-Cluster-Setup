@@ -54,13 +54,26 @@ services:
     ports:
       - "5672:5672"
       - "8404:8404"
+      - "15692:15692"
     networks:
       - rabbitmq-net
     restart: unless-stopped
     depends_on:
       - rabbitmq-node1
       - rabbitmq-node2
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - rabbitmq-net
+    restart: unless-stopped
       
+
 volumes:
   rabbitmq1-data:
   rabbitmq1-logs:
